@@ -1,0 +1,8 @@
+.venv/
+outputs/
+cleaned/
+__pycache__/
+*.pyc
+.DS_Store
+.replicate_token
+.env
