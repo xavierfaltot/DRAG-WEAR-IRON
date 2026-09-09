@@ -1,4 +1,13 @@
-#!/bin/zsh
+#!/bin/bash
 cd "$(dirname "$0")"
-chmod +x run.sh
+clear
+echo "DRAG WEAR IRON"
+echo "Mac launcher"
+echo ""
+chmod +x run.sh INSTALL.command
 ./run.sh
+status=$?
+echo ""
+if [ $status -ne 0 ]; then echo "DRAG WEAR IRON stopped with an error."; fi
+echo ""
+read -n 1 -s -r -p "Press any key to close this window..."
