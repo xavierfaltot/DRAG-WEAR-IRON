@@ -1,49 +1,32 @@
 # DRAG WEAR TOOL
 
-Batch virtual try-on operator for generating multiple locked-pose clothing variations from one person image.
+Batch virtual try-on UI built for a locked-pose clothing animation workflow.
 
-## Core idea
+## Workflow
 
-- Load one BODY reference image
-- Drop a folder of CLOTHES
-- Keep pose, framing, face, background and lighting locked
-- Generate one or more outputs per garment
-- Export an aligned PNG sequence ready for animation
+1. Drop one **BODY** master image.
+2. Drop many **CLOTHES** images.
+3. Generate every garment on the same person.
+4. Export aligned PNGs as a ZIP.
+5. Export a quick MP4 outfit-change preview.
 
-## Target workflow
+## macOS
 
-1. BODY — master person image
-2. CLOTHES — folder of garment photos
-3. POSE LOCK — preserve pose and framing
-4. FACE LOCK — preserve identity
-5. BACKGROUND LOCK — preserve scene
-6. GENERATE ALL — batch all garments
-7. EXPORT — PNG sequence / preview video
+Double-click `INSTALL.command`, or run:
 
-## Planned UI
-
-```text
-┌──────────────────────────────────────┐
-│            DRAG WEAR TOOL            │
-├──────────────────────────────────────┤
-│ BODY         [ DROP IMAGE ]          │
-│ CLOTHES      [ DROP FOLDER ]         │
-│                                      │
-│ CATEGORY     [ AUTO ]                │
-│ POSE LOCK    [ ON ]                  │
-│ FACE LOCK    [ ON ]                  │
-│ BACKGROUND   [ LOCKED ]              │
-│ OUTPUT       [ 9:16 / ORIGINAL ]     │
-│                                      │
-│          [ GENERATE ALL ]            │
-├──────────────────────────────────────┤
-│ LOOK 01  LOOK 02  LOOK 03  LOOK 04  │
-│                                      │
-│ [ EXPORT PNG SEQUENCE ]              │
-│ [ EXPORT VIDEO PREVIEW ]             │
-└──────────────────────────────────────┘
+```bash
+chmod +x run.sh
+./run.sh
 ```
 
-## Status
+The first launch creates a Python virtual environment and installs the UI dependencies.
 
-Initial project scaffold.
+## Engine
+
+The first build connects to a Gradio/Hugging Face virtual try-on backend. Default: `zhengchong/CatVTON`.
+
+**Important:** CatVTON weights are licensed under CC BY-NC-SA 4.0, so use that default backend for non-commercial prototyping only. DRAG WEAR TOOL itself is backend-agnostic and can later be pointed at a commercially licensed compatible endpoint.
+
+## Animation principle
+
+All generated looks use the same BODY source and the same output canvas size. The exported MP4 switches garments without changing the framing, which gives a clean base for the locked-pose outfit animation.
