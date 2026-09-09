@@ -1,4 +1,5 @@
-<img width="1538" height="1022" alt="DRAGWEARTOOL_LOGO" src="https://github.com/user-attachments/assets/614cc5e8-dfd7-4aee-9ad7-7f4b0fef4815" />
+![Uploading DRAGWEARIRON_LOGO.png…]()
+
 # DRAG WEAR TOOL
 
 Batch virtual try-on UI built for a locked-pose clothing animation workflow.
