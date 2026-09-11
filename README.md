@@ -1,80 +1,100 @@
 <img width="1163" height="941" alt="DRAGWEARIRON_LOGO" src="https://github.com/user-attachments/assets/d7342a7e-3cc4-4651-8eda-69229e573ee6" />
 
-# DRAG WEAR IRON — v0.11 AUTO
+# DRAG WEAR IRON — v0.12 NANO BANANA PRO
 
-Virtual try-on machine for turning real shop garment photos into a consistent worn-look sequence.
+Local Mac virtual try-on machine.
 
-**BODY → CLEAN CLOTH → AUTO CATEGORY → IRON → PNG SEQUENCE**
+**BODY MASTER → GARMENT REFERENCE → NANO BANANA PRO → PNG SEQUENCE**
 
-## Current engine
+## Default engine
 
-Replicate / IDM-VTON. CLEAN CLOTH and AUTO CATEGORY run locally. The Replicate token is stored only in `.replicate_token`, which is ignored by Git.
+Google Gemini API / **Gemini 3 Pro Image** (`gemini-3-pro-image`), also known as Nano Banana Pro.
+
+The previous Replicate / IDM-VTON engine remains available as **IDM-VTON LEGACY**.
 
 ## macOS
 
-Double-click `INSTALL.command`, or from Terminal:
+Double-click `INSTALL.command`, or run:
 
 ```bash
 chmod +x INSTALL.command run.sh
 ./run.sh
 ```
 
-The launcher creates `.venv`, installs/checks dependencies and opens the app in the browser.
+The launcher creates `.venv`, installs dependencies and opens the Gradio UI.
 
-## Visible controls
+## First Gemini setup
 
-### MASTER BODY
-The reference person. This is the body, pose, framing and identity the try-on engine starts from.
+1. Create a Gemini API key in Google AI Studio.
+2. Paste it into **GEMINI API KEY**.
+3. Click **TEST + SAVE GEMINI KEY**.
+4. The key is saved only on this Mac in `.gemini_api_key`.
+5. `.gemini_api_key` is ignored by Git and must never be committed.
 
-### CLOTH PREP
-- **CLEAN FIRST**: removes the shop/rack/background around each garment and puts it on a neutral catalogue canvas before try-on. Recommended for messy shop photos.
-- **KEEP ORIGINAL**: sends the original garment photo directly to the model.
+## Recommended quality setup
 
-### CENTER FOCUS
-Controls how aggressively CLEAN CLOTH looks around the center of the source garment photo before background removal.
-- **AUTO**: balanced default.
-- **WIDE**: keeps more of the source image; useful for coats, wide garments or imperfect framing.
-- **TIGHT**: concentrates more strongly on the center; useful when neighboring clothes interfere.
+- ENGINE: **NANO BANANA PRO**
+- GARMENT INPUT: **KEEP ORIGINAL**
+- BODY LOCK: ON
+- GARMENT LOCK: ON
+- FRAME LOCK: ON
+- GARMENT TYPE: AUTO
+- VARIATION: FIDELITY
+- FINAL DETAIL: 0.35
 
-### CATALOGUE PADDING
-Space left around the isolated garment on its neutral background. More padding = smaller garment with more breathing room. Less padding = garment fills more of the conditioning image.
+Use **CLEAN FIRST** only when the garment reference includes a distracting person, rack or background.
 
-### CATEGORY
-- **AUTO**: classifies every garment separately, so tops, trousers/skirts and dresses can be mixed in one batch.
-- **UPPER**: force upper-body clothing.
-- **LOWER**: force trousers/skirts/lower-body clothing.
-- **DRESS**: force dresses/one-piece clothing.
+## Controls
 
-AUTO is silhouette-based and can make mistakes; the manual modes are overrides.
+### BODY LOCK
+Keeps the BODY image as the identity master: face, hairstyle, proportions, hands, pose, expression and anatomy.
 
-### GARMENT DESCRIPTION
-Text conditioning sent with the garment. The default asks the model to preserve color, fabric, cut, seams, pockets, buttons and details. Edit it when a garment has an important feature the model keeps losing.
+### GARMENT LOCK
+Asks Gemini to preserve the exact garment from the second image: silhouette, cut, length, color, fabric, texture, seams, pockets, buttons, zippers, labels and construction details.
 
-### PRESERVE BODY FRAME / CROP
-When ON, asks the backend not to use its automatic person crop. Recommended when the original framing matters. This reduces unwanted reframing but cannot guarantee pixel-perfect body preservation because IDM-VTON still generates the try-on result.
+### FRAME LOCK
+Keeps the original BODY crop, camera position, scene, background and subject placement. Unlike the Google Flow prototype we studied, DRAG WEAR IRON does not force every image into a 3:4 frame.
 
-### STEPS
-Number of diffusion/inference steps used by IDM-VTON. Higher can improve convergence/detail but costs more time and does not automatically mean a more faithful garment. Default: 30.
+### GARMENT TYPE
+- AUTO
+- TOP
+- JACKET
+- BOTTOM
+- FULL
 
-### FINAL DETAIL / ANTI-BLUR
-A mild local sharpening pass after generation. It can recover apparent detail, but it does **not** fix a bad VTON mask or a generated halo. Keep it moderate; too high can create edge halos.
+The prompt changes depending on the garment type. If the BODY already wears a jacket, enable **BODY already wears a jacket** to preserve layering.
 
-### SEED
-Starting random seed. It controls repeatability. The batch currently uses `seed + garment index`, so each garment gets a deterministic but different seed.
+### VARIATION
+- **FIDELITY**: minimal changes, strongest reference stability.
+- **NATURAL**: permits more realistic folds, drape and lighting integration while keeping BODY and GARMENT locks.
 
-### TEST + SAVE TOKEN
-Checks the Replicate connection and stores the token locally on this Mac. Never commit or paste the token into GitHub.
+## Batch output
 
-### PREVIEW CLEAN CLOTH
-Shows what the garment looks like after local cleanup, before spending a Replicate generation. This is the best place to catch a bad cutout.
+`IRON ALL` processes every garment and creates individual PNG files plus:
 
-### IRON ALL
-Processes the whole batch and exports the generated looks plus `DRAG_WEAR_IRON_SEQUENCE.zip`.
+`DRAG_WEAR_IRON_SEQUENCE.zip`
 
-## Known image-quality issue
+## API / implementation
 
-A halo/blur or body deformation can still come from IDM-VTON regenerating more of the person than desired. The next architecture target is **BODY LOCK / GARMENT ONLY**: preserve original BODY pixels outside the clothing transition region instead of trying to repair the whole generated image with sharpening.
+The Gemini engine sends:
 
-## Licensing
+- prompt
+- BODY reference image
+- GARMENT reference image
 
-Verify the current IDM-VTON / hosted model license before commercial deployment.
+to `gemini-3-pro-image`, requesting an image response. The app then normalizes the result to the BODY canvas when FRAME LOCK is enabled.
+
+## Legacy engine
+
+Select **IDM-VTON LEGACY** to use the former Replicate workflow. Its token is saved locally in `.replicate_token`.
+
+## Next finishing pass
+
+1. Run A/B tests against the Google Flow result using the same BODY + garments.
+2. Fix any Gemini API/schema issue against current official docs.
+3. Add a stronger BODY LOCK compositing pass if the model changes non-garment pixels.
+4. Add retry/regenerate for one look.
+5. Add session restore / queue persistence.
+6. Optionally restore GIF/video lookbook export without stretching frames.
+
+See `NEXT_CHAT_HANDOFF.md` to continue the project cleanly in another ChatGPT conversation.
