@@ -3,7 +3,7 @@ set -e
 cd "$(dirname "$0")"
 echo ""
 echo "========================================"
-echo " DRAG WEAR IRON v0.17 — WEAR IT ALL"
+echo " DRAG WEAR IRON v0.18 — WEAR IT ALL"
 echo "========================================"
 echo ""
 if command -v python3.11 >/dev/null 2>&1; then PYTHON="$(command -v python3.11)"; elif command -v python3 >/dev/null 2>&1; then PYTHON="$(command -v python3)"; else echo "ERROR: Python 3 not found."; exit 1; fi
@@ -24,6 +24,6 @@ fi
 echo "[2/3] Checking dependencies..."
 python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
-echo "[3/3] Starting DRAG WEAR IRON v0.17..."
+echo "[3/3] Starting DRAG WEAR IRON v0.18..."
 echo "Keep this Terminal window open."
-python app_v017.py
+python app_v018.py
