@@ -6,9 +6,10 @@ from PIL import Image, ImageFilter, ImageOps
 from rembg import remove, new_session
 import requests, replicate
 
-APP_NAME = 'DRAG WEAR IRON v0.13'
+APP_NAME = 'DRAG WEAR IRON v0.14'
 GEMINI_MODEL = 'gemini-3-pro-image'
 IDM_MODEL = 'cuuupid/idm-vton:0513734a452173b8173e907e3a59d19a36266e55b48528559432bd21c7d7e985'
+GEMINI_ATTEMPTS = 3
 
 ROOT = Path(__file__).resolve().parent
 WORK = ROOT / 'outputs'
@@ -121,11 +122,17 @@ def clean_batch(files, focus, padding, progress=gr.Progress()):
     ps = files_list(files)
     if not ps:
         raise gr.Error('Ajoute au moins une photo de vêtement.')
-    outs = []
+    outs, failed = [], []
     for i, p in enumerate(ps):
         progress((i, len(ps)), desc=f'CLEAN {i+1}/{len(ps)}')
-        outs.append(clean_one(p, focus, int(padding)))
-    return outs, f'{len(outs)} CLEAN CLOTH READY'
+        try:
+            outs.append(clean_one(p, focus, int(padding)))
+        except Exception as e:
+            failed.append(f'{i+1}: {e}')
+    status = f'{len(outs)}/{len(ps)} CLEAN CLOTH READY'
+    if failed:
+        status += ' • FAILED: ' + ' | '.join(failed)
+    return outs, status
 
 def prompt_for(category, has_jacket, body_lock, garment_lock, frame_lock, variation, notes):
     if category == 'JACKET':
@@ -221,6 +228,41 @@ def normalize_to_body(result_path, body_path):
     result.save(p, 'PNG')
     return p
 
+def response_parts(response):
+    parts = list(getattr(response, 'parts', []) or [])
+    if parts:
+        return parts
+    for candidate in getattr(response, 'candidates', []) or []:
+        content = getattr(candidate, 'content', None)
+        parts.extend(list(getattr(content, 'parts', []) or []))
+    return parts
+
+def response_image(response):
+    for part in response_parts(response):
+        if getattr(part, 'inline_data', None) is None:
+            continue
+        try:
+            image = part.as_image()
+        except Exception:
+            image = None
+        if image is not None:
+            return image
+    return None
+
+def gemini_no_image_reason(response):
+    feedback = getattr(response, 'prompt_feedback', None)
+    block = getattr(feedback, 'block_reason', None) if feedback else None
+    if block:
+        return f'Gemini returned no image (block reason: {block})'
+    texts = []
+    for part in response_parts(response):
+        text = getattr(part, 'text', None)
+        if text:
+            texts.append(str(text).strip())
+    if texts:
+        return 'Gemini returned no image: ' + ' '.join(texts)[:500]
+    return 'Gemini returned no image'
+
 def run_gemini(person, cloth, prompt, key, frame_lock=True):
     key = (key or '').strip() or secret(GEMINI_KEY)
     if not key:
@@ -240,35 +282,34 @@ def run_gemini(person, cloth, prompt, key, frame_lock=True):
     except Exception:
         config = types.GenerateContentConfig(response_modalities=['IMAGE'])
 
-    response = client.models.generate_content(
-        model=GEMINI_MODEL,
-        contents=[prompt, rgb(person), rgb(cloth)],
-        config=config
-    )
-
-    image = None
-    for part in getattr(response, 'parts', []) or []:
-        if getattr(part, 'inline_data', None) is not None:
-            try:
-                image = part.as_image()
-            except Exception:
-                image = None
-            if image is not None:
-                break
-    if image is None:
-        raise RuntimeError('Gemini returned no image')
-
-    fd, p = tempfile.mkstemp(suffix='.png')
-    os.close(fd)
-    image.convert('RGB').save(p, 'PNG')
-    if frame_lock:
-        q = normalize_to_body(p, person)
+    last_error = None
+    for attempt in range(1, GEMINI_ATTEMPTS + 1):
         try:
-            os.remove(p)
-        except Exception:
-            pass
-        return q
-    return p
+            response = client.models.generate_content(
+                model=GEMINI_MODEL,
+                contents=[prompt, rgb(person), rgb(cloth)],
+                config=config
+            )
+            image = response_image(response)
+            if image is None:
+                raise RuntimeError(gemini_no_image_reason(response))
+
+            fd, p = tempfile.mkstemp(suffix='.png')
+            os.close(fd)
+            image.convert('RGB').save(p, 'PNG')
+            if frame_lock:
+                q = normalize_to_body(p, person)
+                try:
+                    os.remove(p)
+                except Exception:
+                    pass
+                return q
+            return p
+        except Exception as e:
+            last_error = e
+            if attempt < GEMINI_ATTEMPTS:
+                time.sleep(1.5 * attempt)
+    raise RuntimeError(f'Gemini failed after {GEMINI_ATTEMPTS} attempts: {last_error}')
 
 def run_idm(person, cloth, category, description, steps, seed, token, preserve):
     token = (token or '').strip() or secret(REPLICATE_KEY)
@@ -327,9 +368,9 @@ def sharpen(path, amount):
     if float(amount) <= 0:
         return path
     im = Image.open(path).convert('RGB').filter(ImageFilter.UnsharpMask(1.05, int(55 + float(amount) * 45), 3))
-    fd, p = tempfile.mkstemp(suffix='.jpg')
+    fd, p = tempfile.mkstemp(suffix='.png')
     os.close(fd)
-    im.save(p, 'JPEG', quality=97, optimize=True)
+    im.save(p, 'PNG')
     return p
 
 def safe_stem(path):
@@ -410,22 +451,30 @@ def generate(person, raw_files, clean_mode, focus, padding, engine, category, ha
     }
 
     manifest = {
-        'version': '0.13', 'created_at': time.strftime('%Y-%m-%d %H:%M:%S'),
+        'version': '0.14', 'created_at': time.strftime('%Y-%m-%d %H:%M:%S'),
         'run_dir': str(rd), 'body': body_path, 'config': cfg, 'items': []
     }
 
     for i, p in enumerate(ps, start=1):
         raw_copy = save_input_copy(p, raw_dir / f'{i:03d}_{safe_stem(p)}.png')
-        cloth = clean_one(raw_copy, focus, int(padding), clean_dir) if clean_mode == 'CLEAN FIRST' else raw_copy
+        cloth, prep_error = raw_copy, None
+        if clean_mode == 'CLEAN FIRST':
+            try:
+                cloth = clean_one(raw_copy, focus, int(padding), clean_dir)
+            except Exception as e:
+                prep_error = 'CLEAN FIRST failed: ' + str(e)
         manifest['items'].append({
             'index': i, 'source_name': Path(p).name, 'raw': raw_copy,
-            'cloth': cloth, 'output': None, 'error': None
+            'cloth': cloth, 'output': None, 'error': prep_error
         })
 
     manifest_path = persist_manifest(manifest)
 
     for i, item in enumerate(manifest['items']):
         progress((i, len(manifest['items'])), desc=f'IRON {i+1}/{len(manifest["items"])}')
+        if item.get('error'):
+            persist_manifest(manifest)
+            continue
         temp = final = None
         try:
             temp = engine_run(body_path, item['cloth'], cfg, gkey, rtoken)
@@ -468,6 +517,18 @@ def regenerate_one(look_number, manifest_path, gkey, rtoken):
 
     cfg = manifest['config']
     item = items[idx - 1]
+    if cfg.get('clean_mode') == 'CLEAN FIRST' and item.get('error', '').startswith('CLEAN FIRST failed:'):
+        try:
+            item['cloth'] = clean_one(
+                item['raw'], cfg.get('focus', 'AUTO'), int(cfg.get('padding', 70)),
+                Path(manifest['run_dir']) / 'inputs' / 'cleaned'
+            )
+            item['error'] = None
+        except Exception as e:
+            item['error'] = 'CLEAN FIRST failed: ' + str(e)
+            persist_manifest(manifest)
+            raise gr.Error(f'LOOK {idx} clean failed: {e}')
+
     temp = final = None
     try:
         temp = engine_run(manifest['body'], item['cloth'], cfg, gkey, rtoken)
