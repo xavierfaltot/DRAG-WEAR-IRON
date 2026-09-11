@@ -1,7 +1,7 @@
 #!/bin/bash
 cd "$(dirname "$0")"
 clear
-echo "DRAG WEAR IRON v0.16 — WEAR IT ALL"
+echo "DRAG WEAR IRON v0.17 — WEAR IT ALL"
 echo "Mac launcher"
 echo ""
 chmod +x run.sh INSTALL.command
