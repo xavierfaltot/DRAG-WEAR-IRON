@@ -1,7 +1,7 @@
 #!/bin/bash
 cd "$(dirname "$0")"
 clear
-echo "DRAG WEAR IRON v0.12 — NANO BANANA PRO"
+echo "DRAG WEAR IRON v0.14 — NANO BANANA PRO"
 echo "Mac launcher"
 echo ""
 chmod +x run.sh INSTALL.command
