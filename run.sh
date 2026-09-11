@@ -3,7 +3,7 @@ set -e
 cd "$(dirname "$0")"
 echo ""
 echo "========================================"
-echo " DRAG WEAR IRON v0.12 — NANO BANANA PRO"
+echo " DRAG WEAR IRON v0.14 — NANO BANANA PRO"
 echo "========================================"
 echo ""
 if command -v python3.11 >/dev/null 2>&1; then PYTHON="$(command -v python3.11)"; elif command -v python3 >/dev/null 2>&1; then PYTHON="$(command -v python3)"; else echo "ERROR: Python 3 not found."; exit 1; fi
