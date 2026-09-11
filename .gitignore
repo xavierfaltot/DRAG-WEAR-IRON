@@ -6,4 +6,5 @@ __pycache__/
 .DS_Store
 .replicate_token
 .gemini_api_key
+.last_session.json
 .env
