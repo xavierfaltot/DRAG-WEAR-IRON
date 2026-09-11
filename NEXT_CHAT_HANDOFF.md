@@ -1,16 +1,12 @@
 # DRAG WEAR IRON — NEXT CHAT HANDOFF
 
-Paste the text below into a new ChatGPT conversation to continue the project:
-
----
-
-Je veux continuer et terminer **DRAG WEAR IRON**.
+Je veux continuer **DRAG WEAR IRON**.
 
 Repo GitHub:
 https://github.com/xavierfaltot/DRAG-WEAR-IRON
 
-Current target version:
-**v0.12 — NANO BANANA PRO**
+Current version:
+**v0.13 — NANO BANANA PRO FINISH PASS**
 
 Current architecture:
 - local Mac / Python / Gradio
@@ -19,37 +15,43 @@ Current architecture:
 - fallback engine = Replicate IDM-VTON
 - Gemini API key stored locally in `.gemini_api_key`
 - Replicate token stored locally in `.replicate_token`
-- BODY LOCK = preserve exact identity, face, pose, anatomy
-- GARMENT LOCK = preserve exact garment construction/details
-- FRAME LOCK = preserve crop/background/camera
+- BODY LOCK = exact identity / face / pose / anatomy preservation prompt
+- GARMENT LOCK = exact garment construction/details
+- FRAME LOCK = BODY composition + nearest supported Gemini aspect ratio + normalization to BODY canvas
 - garment modes = AUTO / TOP / JACKET / BOTTOM / FULL
 - variation = FIDELITY / NATURAL
 - PNG batch export
+- failed batch items no longer abort the complete run
+- REGENERATE ONE LOOK
+- RESTORE LAST SESSION
+- persistent run `session.json`
+- stable copies of BODY and GARMENT inputs inside each run
+- `.last_session.json` pointer is local-only and Git ignored
 
-Google Flow code we studied used:
-- two image references: BODY + GARMENT
-- Nano Banana Pro
-- body identity lock
-- garment-specific transfer prompts
-- JACKET / BOTTOM / FULL logic
-- stable/fidelity mode
+Google API status checked against official docs on 2026-09-11:
+- stable Nano Banana Pro model code is still `gemini-3-pro-image`
+- image + text inputs and image output are supported
+- `generate_content` remains documented
+- image `response_format` supports aspect ratio and image size for Gemini 3 Pro Image
+- current app requests 2K + BODY-nearest aspect ratio when supported
+- safe SDK fallback remains if `response_format` is unavailable locally
 
-Important improvements we deliberately kept:
+Important design choices:
 - no forced 3:4 crop
 - no stretched GIF
-- BODY framing should remain the master frame
-- originals should not be modified
-- simplest possible Mac launch, preferably double-click
+- BODY framing remains the master frame
+- originals are copied into the run; user originals are not modified
+- simplest possible Mac launch
+- Gemini remains the main engine
 
-NEXT TASK:
-1. Test v0.12 with a real Gemini API key.
-2. Compare output against Google Flow on the same BODY + garments.
-3. Fix any API/schema errors with the current official Gemini docs.
-4. Improve BODY LOCK if Gemini changes face/background/body outside the garment.
-5. Add retry/regenerate-one-look and session restore.
-6. Keep GitHub repo updated after each stable fix.
+NEXT TASK / ACCEPTANCE TEST:
+1. Pull/run v0.13 on the Mac.
+2. Test the saved real Gemini API key with `TEST + SAVE GEMINI KEY`.
+3. Run one BODY + one garment that was already tested in Google Flow.
+4. Compare BODY identity, background stability and garment construction.
+5. If the output is weak, test REGENERATE ONE LOOK.
+6. Close/reopen the app and test RESTORE LAST SESSION.
+7. Only if real-world A/B results show face/background drift, add a compositing/masking BODY LOCK pass.
 
-Do not revert to IDM-VTON as the main engine unless Gemini fails.
-Use Nano Banana Pro as the quality reference.
-
----
+Do not revert to IDM-VTON as the main engine unless Gemini actually fails.
+Use Nano Banana Pro / Google Flow as the quality reference.
